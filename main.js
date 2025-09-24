@@ -237,13 +237,16 @@ function overlayImageOnCanvas(img, landmarks, isHead = false) {
   canvasCtx.drawImage(img, overlayX, overlayY, overlayWidth, overlayHeight);
 }
 
-// Video setup - force full screen
+// Video setup - match canvas to screen resolution for sharp display
 videoElement.onloadedmetadata = () => {
-  // Set canvas to match video resolution
-  canvasElement.width = videoElement.videoWidth;
-  canvasElement.height = videoElement.videoHeight;
+  // Set canvas resolution to match screen for crisp rendering
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  
+  canvasElement.width = screenWidth;
+  canvasElement.height = screenHeight;
 
-  // Force both video and canvas to fill entire screen
+  // Set display size to fill screen
   videoElement.style.width = '100vw';
   videoElement.style.height = '100vh';
   videoElement.style.objectFit = 'cover';
@@ -253,7 +256,7 @@ videoElement.onloadedmetadata = () => {
   canvasElement.style.left = '0px';
   canvasElement.style.top = '0px';
   
-  console.log(`Video: ${videoElement.videoWidth}x${videoElement.videoHeight}, Screen: 100vw x 100vh`);
+  console.log(`Video: ${videoElement.videoWidth}x${videoElement.videoHeight}, Canvas: ${screenWidth}x${screenHeight}`);
 };
 
 // Initialize camera with clean fallback approach
