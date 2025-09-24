@@ -174,8 +174,9 @@ function switchOutfitSet(newIndex) {
   });
 }
 
-// Enhanced overlay function with better positioning and multi-person support
-function overlayImageOnCanvas(img, landmarks, isHead = false, personIndex = 0) {
+
+// Enhanced overlay function with better positioning
+function overlayImageOnCanvas(img, landmarks, isHead = false) {
   if (!img) return;
   
   const w = canvasElement.width;
@@ -228,20 +229,21 @@ function overlayImageOnCanvas(img, landmarks, isHead = false, personIndex = 0) {
     overlayY = torsoTop - overlayHeight * 0.1; // Slight offset upward
   }
   
-  // Apply smoothing if we have previous coordinates (per person)
-  if (!prevCoords) prevCoords = {};
-  if (!prevCoords[personIndex]) prevCoords[personIndex] = {};
-  
-  const key = isHead ? 'head' : 'torso';
-  if (prevCoords[personIndex][key]) {
-    overlayX = SMOOTHING_ALPHA * overlayX + (1 - SMOOTHING_ALPHA) * prevCoords[personIndex][key].x;
-    overlayY = SMOOTHING_ALPHA * overlayY + (1 - SMOOTHING_ALPHA) * prevCoords[personIndex][key].y;
-    overlayWidth = SMOOTHING_ALPHA * overlayWidth + (1 - SMOOTHING_ALPHA) * prevCoords[personIndex][key].width;
-    overlayHeight = SMOOTHING_ALPHA * overlayHeight + (1 - SMOOTHING_ALPHA) * prevCoords[personIndex][key].height;
+  // Apply smoothing if we have previous coordinates
+  if (prevCoords) {
+    const key = isHead ? 'head' : 'torso';
+    if (prevCoords[key]) {
+      overlayX = SMOOTHING_ALPHA * overlayX + (1 - SMOOTHING_ALPHA) * prevCoords[key].x;
+      overlayY = SMOOTHING_ALPHA * overlayY + (1 - SMOOTHING_ALPHA) * prevCoords[key].y;
+      overlayWidth = SMOOTHING_ALPHA * overlayWidth + (1 - SMOOTHING_ALPHA) * prevCoords[key].width;
+      overlayHeight = SMOOTHING_ALPHA * overlayHeight + (1 - SMOOTHING_ALPHA) * prevCoords[key].height;
+    }
   }
   
   // Save current coordinates for next frame smoothing
-  prevCoords[personIndex][key] = { x: overlayX, y: overlayY, width: overlayWidth, height: overlayHeight };
+  if (!prevCoords) prevCoords = {};
+  const key = isHead ? 'head' : 'torso';
+  prevCoords[key] = { x: overlayX, y: overlayY, width: overlayWidth, height: overlayHeight };
   
   // Draw the image
   canvasCtx.drawImage(img, overlayX, overlayY, overlayWidth, overlayHeight);
@@ -332,30 +334,24 @@ pose.onResults((results) => {
   // Draw the results image
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  // Handle multiple people or single person
-  const allPoseLandmarks = results.multiPoseLandmarks || (results.poseLandmarks ? [results.poseLandmarks] : []);
-  
-  if (allPoseLandmarks.length === 0) {
+  // Single person detection (MediaPipe Pose limitation)
+  if (!results.poseLandmarks) {
     prevCoords = null; // Reset smoothing when no pose detected
     return;
   }
 
-  // Apply outfits to all detected people
-  allPoseLandmarks.forEach((landmarks, personIndex) => {
-    if (!landmarks || landmarks.length === 0) return;
-    
-    const currentSet = outfitSets[currentSetIndex];
-    
-    // Draw torso outfit if available
-    if (currentSet.torso && outfitImages[`${currentSetIndex}_torso`]) {
-      overlayImageOnCanvas(outfitImages[`${currentSetIndex}_torso`], landmarks, false, personIndex);
-    }
-    
-    // Draw head outfit if available
-    if (currentSet.head && outfitImages[`${currentSetIndex}_head`]) {
-      overlayImageOnCanvas(outfitImages[`${currentSetIndex}_head`], landmarks, true, personIndex);
-    }
-  });
+  const landmarks = results.poseLandmarks;
+  const currentSet = outfitSets[currentSetIndex];
+  
+  // Draw torso outfit if available
+  if (currentSet.torso && outfitImages[`${currentSetIndex}_torso`]) {
+    overlayImageOnCanvas(outfitImages[`${currentSetIndex}_torso`], landmarks, false);
+  }
+  
+  // Draw head outfit if available
+  if (currentSet.head && outfitImages[`${currentSetIndex}_head`]) {
+    overlayImageOnCanvas(outfitImages[`${currentSetIndex}_head`], landmarks, true);
+  }
 });
 
 // Start camera and pose detection with max performance settings
