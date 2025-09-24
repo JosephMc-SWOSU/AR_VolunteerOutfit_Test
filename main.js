@@ -245,29 +245,24 @@ videoElement.onloadedmetadata = () => {
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
 
-  // Calculate the best fit without stretching
+  // Fill screen while maintaining aspect ratio (may crop edges)
   let displayWidth, displayHeight;
   
   if (screenAspectRatio > videoAspectRatio) {
-    // Screen is wider than video - fit to height
-    displayHeight = Math.min(window.innerHeight, videoElement.videoHeight);
-    displayWidth = displayHeight * videoAspectRatio;
-  } else {
-    // Screen is taller than video - fit to width  
-    displayWidth = Math.min(window.innerWidth, videoElement.videoWidth);
+    // Screen is wider than video - fill width, crop height if needed
+    displayWidth = window.innerWidth;
     displayHeight = displayWidth / videoAspectRatio;
+  } else {
+    // Screen is taller than video - fill height, crop width if needed
+    displayHeight = window.innerHeight;
+    displayWidth = displayHeight * videoAspectRatio;
   }
 
-  // Apply the calculated dimensions
+  // Apply the calculated dimensions to fill screen
   videoElement.style.width = displayWidth + 'px';
   videoElement.style.height = displayHeight + 'px';
   canvasElement.style.width = displayWidth + 'px';
   canvasElement.style.height = displayHeight + 'px';
-  
-  // Center the canvas/video
-  canvasElement.style.left = '50%';
-  canvasElement.style.top = '50%';
-  canvasElement.style.transform = 'translate(-50%, -50%)';
   
   console.log(`Video: ${videoElement.videoWidth}x${videoElement.videoHeight}, Display: ${displayWidth}x${displayHeight}`);
 };
