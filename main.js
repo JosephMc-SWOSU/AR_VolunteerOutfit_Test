@@ -66,50 +66,96 @@ function checkAllImagesLoaded() {
   }
 }
 
-// Create outfit selection buttons
+// Create outfit selection buttons with image thumbnails
 function createOutfitButtons() {
+  console.log('Creating outfit buttons with image thumbnails...');
+  
+  // Remove existing buttons if any
+  const existingButtons = document.getElementById('outfit-buttons');
+  if (existingButtons) {
+    existingButtons.remove();
+  }
+  
   const buttonContainer = document.createElement('div');
   buttonContainer.id = 'outfit-buttons';
   buttonContainer.style.cssText = `
-    position: absolute;
+    position: fixed;
     top: 20px;
     right: 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    z-index: 1000;
+    gap: 12px;
+    z-index: 10000;
   `;
   
   outfitSets.forEach((set, index) => {
     const button = document.createElement('button');
-    button.textContent = set.name;
     button.style.cssText = `
-      padding: 10px 15px;
-      background: ${index === currentSetIndex ? '#007bff' : '#6c757d'};
-      color: white;
-      border: none;
-      border-radius: 5px;
+      width: 80px;
+      height: 80px;
+      padding: 0;
+      border: 3px solid ${index === currentSetIndex ? '#007bff' : '#ffffff'};
+      border-radius: 12px;
       cursor: pointer;
-      font-size: 14px;
-      min-width: 100px;
+      background: #f8f9fa;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      overflow: hidden;
+      position: relative;
     `;
     
-    button.addEventListener('click', () => switchOutfitSet(index));
-    button.addEventListener('mouseover', () => {
-      if (index !== currentSetIndex) {
-        button.style.background = '#5a6268';
-      }
+    // Create image element for the button
+    const img = document.createElement('img');
+    const imagePath = set.torso || set.head; // Use torso first, fallback to head
+    img.src = imagePath;
+    img.style.cssText = `
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: white;
+    `;
+    img.alt = set.name;
+    
+    // Add a small label at the bottom
+    const label = document.createElement('div');
+    label.textContent = set.name;
+    label.style.cssText = `
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-size: 8px;
+      text-align: center;
+      padding: 2px;
+      font-weight: bold;
+    `;
+    
+    button.appendChild(img);
+    button.appendChild(label);
+    
+    // Event listeners
+    button.addEventListener('click', () => {
+      console.log(`Button clicked: ${set.name}`);
+      switchOutfitSet(index);
     });
+    
+    button.addEventListener('mouseover', () => {
+      button.style.transform = 'translateY(-2px) scale(1.05)';
+      button.style.boxShadow = '0 6px 16px rgba(0,0,0,0.3)';
+    });
+    
     button.addEventListener('mouseout', () => {
-      if (index !== currentSetIndex) {
-        button.style.background = '#6c757d';
-      }
+      button.style.transform = 'translateY(0) scale(1)';
+      button.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
     });
     
     buttonContainer.appendChild(button);
   });
   
   document.body.appendChild(buttonContainer);
+  console.log('Outfit image buttons created successfully');
 }
 
 // Switch outfit set
@@ -117,10 +163,13 @@ function switchOutfitSet(newIndex) {
   currentSetIndex = newIndex;
   console.log(`Switched to outfit set: ${outfitSets[currentSetIndex].name}`);
   
-  // Update button styles
+  // Update button border styles to show active selection
   const buttons = document.querySelectorAll('#outfit-buttons button');
   buttons.forEach((btn, idx) => {
-    btn.style.background = idx === currentSetIndex ? '#007bff' : '#6c757d';
+    btn.style.border = `3px solid ${idx === currentSetIndex ? '#007bff' : '#ffffff'}`;
+    btn.style.boxShadow = idx === currentSetIndex 
+      ? '0 4px 12px rgba(0,123,255,0.4)' 
+      : '0 4px 8px rgba(0,0,0,0.2)';
   });
 }
 
@@ -189,33 +238,62 @@ function overlayImageOnCanvas(img, landmarks, isHead = false) {
 
 // Video setup
 videoElement.onloadedmetadata = () => {
-  const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+  const videoAspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+  const screenAspectRatio = window.innerWidth / window.innerHeight;
 
-  // Match canvas size with camera
+  // Match canvas size with camera native resolution
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
 
-  // Make canvas and video fit the screen
-  if (window.innerWidth / window.innerHeight > aspectRatio) {
-    // Wide screen
-    videoElement.style.width = 'auto';
-    videoElement.style.height = '100vh';
-    canvasElement.style.width = 'auto';
-    canvasElement.style.height = '100vh';
+  // Calculate the best fit without stretching
+  let displayWidth, displayHeight;
+  
+  if (screenAspectRatio > videoAspectRatio) {
+    // Screen is wider than video - fit to height
+    displayHeight = Math.min(window.innerHeight, videoElement.videoHeight);
+    displayWidth = displayHeight * videoAspectRatio;
   } else {
-    // Tall screen
-    videoElement.style.width = '100vw';
-    videoElement.style.height = 'auto';
-    canvasElement.style.width = '100vw';
-    canvasElement.style.height = 'auto';
+    // Screen is taller than video - fit to width  
+    displayWidth = Math.min(window.innerWidth, videoElement.videoWidth);
+    displayHeight = displayWidth / videoAspectRatio;
   }
+
+  // Apply the calculated dimensions
+  videoElement.style.width = displayWidth + 'px';
+  videoElement.style.height = displayHeight + 'px';
+  canvasElement.style.width = displayWidth + 'px';
+  canvasElement.style.height = displayHeight + 'px';
+  
+  // Center the canvas/video
+  canvasElement.style.left = '50%';
+  canvasElement.style.top = '50%';
+  canvasElement.style.transform = 'translate(-50%, -50%)';
+  
+  console.log(`Video: ${videoElement.videoWidth}x${videoElement.videoHeight}, Display: ${displayWidth}x${displayHeight}`);
 };
 
-// Initialize camera
-navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+// Initialize camera with high quality settings
+navigator.mediaDevices.getUserMedia({ 
+  video: {
+    width: { ideal: 1280, min: 640 },
+    height: { ideal: 720, min: 480 },
+    frameRate: { ideal: 30 },
+    facingMode: 'user'
+  }
+}).then(stream => {
   videoElement.srcObject = stream;
+  console.log('Camera initialized successfully');
 }).catch(err => {
-  console.error('Error accessing camera:', err);
+  console.error('Error accessing high-quality camera, trying basic:', err);
+  // Fallback to basic video constraints if specific constraints fail
+  return navigator.mediaDevices.getUserMedia({ video: true });
+}).then(stream => {
+  if (stream && !videoElement.srcObject) {
+    videoElement.srcObject = stream;
+    console.log('Camera initialized with basic settings');
+  }
+}).catch(err => {
+  console.error('Failed to access any camera:', err);
 });
 
 // MediaPipe pose detection setup
@@ -260,12 +338,21 @@ const camera = new Camera(videoElement, {
   onFrame: async () => {
     await pose.send({ image: videoElement });
   },
-  width: 1280, // Higher resolution for better detection
-  height: 720
+  width: 640, // Reduced to prevent quality issues with MediaPipe
+  height: 480
 });
 
 // Initialize everything
 loadOutfitImages();
 camera.start();
+
+// Failsafe: Create buttons after a delay even if images haven't loaded completely
+setTimeout(() => {
+  const buttonsExist = document.getElementById('outfit-buttons');
+  if (!buttonsExist) {
+    console.warn('Buttons not created yet, creating them as failsafe...');
+    createOutfitButtons();
+  }
+}, 3000);
 
 console.log('AR Volunteer Outfit system initialized with multiple outfit sets!');
