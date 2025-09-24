@@ -237,13 +237,35 @@ function overlayImageOnCanvas(img, landmarks, isHead = false) {
   canvasCtx.drawImage(img, overlayX, overlayY, overlayWidth, overlayHeight);
 }
 
-// Video setup - true contain without forced dimensions
+// Video setup with proper aspect ratio handling
 videoElement.onloadedmetadata = () => {
-  // Set canvas to match video resolution for best quality
-  canvasElement.width = videoElement.videoWidth;
-  canvasElement.height = videoElement.videoHeight;
-
-  console.log(`Video: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+  const videoAspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+  const screenAspectRatio = window.innerWidth / window.innerHeight;
+  
+  let displayWidth, displayHeight;
+  
+  // Calculate display size that fits screen without stretching
+  if (screenAspectRatio > videoAspectRatio) {
+    // Screen is wider - fit to height
+    displayHeight = window.innerHeight;
+    displayWidth = displayHeight * videoAspectRatio;
+  } else {
+    // Screen is taller - fit to width
+    displayWidth = window.innerWidth;
+    displayHeight = displayWidth / videoAspectRatio;
+  }
+  
+  // Set canvas to display size for sharp rendering
+  canvasElement.width = displayWidth;
+  canvasElement.height = displayHeight;
+  
+  // Center the canvas
+  canvasElement.style.width = displayWidth + 'px';
+  canvasElement.style.height = displayHeight + 'px';
+  canvasElement.style.left = (window.innerWidth - displayWidth) / 2 + 'px';
+  canvasElement.style.top = (window.innerHeight - displayHeight) / 2 + 'px';
+  
+  console.log(`Video: ${videoElement.videoWidth}x${videoElement.videoHeight}, Display: ${displayWidth}x${displayHeight}`);
 };
 
 // Simple camera initialization (let MediaPipe Camera handle it)
@@ -280,10 +302,29 @@ pose.setOptions({
   minTrackingConfidence: 0.5
 });
 
-// Enhanced pose results processing
+// Enhanced pose results processing with proper aspect ratio
 pose.onResults((results) => {
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+  
+  // Draw video maintaining aspect ratio (no stretching)
+  const videoAspectRatio = results.image.videoWidth / results.image.videoHeight;
+  const canvasAspectRatio = canvasElement.width / canvasElement.height;
+  
+  let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+  
+  if (canvasAspectRatio > videoAspectRatio) {
+    // Canvas is wider - fit to height
+    drawHeight = canvasElement.height;
+    drawWidth = drawHeight * videoAspectRatio;
+    offsetX = (canvasElement.width - drawWidth) / 2;
+  } else {
+    // Canvas is taller - fit to width
+    drawWidth = canvasElement.width;
+    drawHeight = drawWidth / videoAspectRatio;
+    offsetY = (canvasElement.height - drawHeight) / 2;
+  }
+  
+  canvasCtx.drawImage(results.image, offsetX, offsetY, drawWidth, drawHeight);
 
   if (!results.poseLandmarks) {
     prevCoords = null; // Reset smoothing when no pose detected
