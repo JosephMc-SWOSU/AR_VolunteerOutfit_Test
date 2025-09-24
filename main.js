@@ -237,23 +237,12 @@ function overlayImageOnCanvas(img, landmarks, isHead = false) {
   canvasCtx.drawImage(img, overlayX, overlayY, overlayWidth, overlayHeight);
 }
 
-// Video setup - pure contain for any camera
+// Video setup - true contain without forced dimensions
 videoElement.onloadedmetadata = () => {
   // Set canvas to match video resolution for best quality
   canvasElement.width = videoElement.videoWidth;
   canvasElement.height = videoElement.videoHeight;
 
-  // Pure contain - no stretching, works with any camera aspect ratio
-  videoElement.style.width = '100vw';
-  videoElement.style.height = '100vh';
-  videoElement.style.objectFit = 'contain';
-  
-  canvasElement.style.width = '100vw';
-  canvasElement.style.height = '100vh';
-  canvasElement.style.objectFit = 'contain';
-  canvasElement.style.left = '0px';
-  canvasElement.style.top = '0px';
-  
   console.log(`Video: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
 };
 
