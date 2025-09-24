@@ -1,6 +1,6 @@
 // --- CONFIG ---
 const OUTFIT_SCALE = 1.5; // 1.0 = normal size, >1 = bigger, <1 = smaller
-const SMOOTHING_ALPHA = 0.3; // smoothing factor for position tracking
+const SMOOTHING_ALPHA = 0.1; // Much more smoothing to reduce jitter
 
 // HTML elements
 const videoElement = document.getElementById('input_video');
@@ -203,9 +203,9 @@ function overlayImageOnCanvas(img, landmarks, isHead = false, personIndex = 0) {
     overlayHeight = overlayWidth; // Keep square for hats
     overlayX = noseX - overlayWidth / 2;
     
-    // Position hat just above nose, accounting for different head sizes
+    // Position hat above the head, not over the face
     const headToShoulderDistance = Math.abs(noseY - shoulderCenterY);
-    const hatOffset = Math.max(overlayHeight * 0.6, headToShoulderDistance * 0.3);
+    const hatOffset = overlayHeight * 0.8 + headToShoulderDistance * 0.2;
     overlayY = noseY - hatOffset;
     
   } else {
@@ -280,49 +280,56 @@ const pose = new Pose({
 });
 
 pose.setOptions({
-  modelComplexity: 1, // Increased for better accuracy
+  modelComplexity: 0, // Reduced for better performance
   smoothLandmarks: true,
   enableSegmentation: false,
-  minDetectionConfidence: 0.7, // Increased for better detection
-  minTrackingConfidence: 0.5
+  minDetectionConfidence: 0.3, // Very low for max performance
+  minTrackingConfidence: 0.3
 });
 
-// Enhanced pose results processing with proper sizing
+// Performance optimized pose results processing
+let canvasSetup = false;
+
 pose.onResults((results) => {
   if (!results.image) return;
   
-  // Set canvas size based on actual MediaPipe results image
-  const imageWidth = results.image.width;
-  const imageHeight = results.image.height;
-  const imageAspectRatio = imageWidth / imageHeight;
-  const screenAspectRatio = window.innerWidth / window.innerHeight;
-  
-  let displayWidth, displayHeight;
-  
-  // Calculate display size that fits screen without stretching
-  if (screenAspectRatio > imageAspectRatio) {
-    // Screen is wider - fit to height
-    displayHeight = window.innerHeight;
-    displayWidth = displayHeight * imageAspectRatio;
-  } else {
-    // Screen is taller - fit to width
-    displayWidth = window.innerWidth;
-    displayHeight = displayWidth / imageAspectRatio;
+  // Only set canvas size once for better performance
+  if (!canvasSetup) {
+    const imageWidth = results.image.width;
+    const imageHeight = results.image.height;
+    const imageAspectRatio = imageWidth / imageHeight;
+    const screenAspectRatio = window.innerWidth / window.innerHeight;
+    
+    let displayWidth, displayHeight;
+    
+    // Calculate display size that fits screen without stretching
+    if (screenAspectRatio > imageAspectRatio) {
+      // Screen is wider - fit to height
+      displayHeight = window.innerHeight;
+      displayWidth = displayHeight * imageAspectRatio;
+    } else {
+      // Screen is taller - fit to width
+      displayWidth = window.innerWidth;
+      displayHeight = displayWidth / imageAspectRatio;
+    }
+    
+    // Set canvas to display size
+    canvasElement.width = displayWidth;
+    canvasElement.height = displayHeight;
+    
+    // Center the canvas
+    canvasElement.style.width = displayWidth + 'px';
+    canvasElement.style.height = displayHeight + 'px';
+    canvasElement.style.left = (window.innerWidth - displayWidth) / 2 + 'px';
+    canvasElement.style.top = (window.innerHeight - displayHeight) / 2 + 'px';
+    
+    canvasSetup = true;
+    console.log(`Canvas setup complete: ${displayWidth}x${displayHeight}`);
   }
-  
-  // Set canvas to display size
-  canvasElement.width = displayWidth;
-  canvasElement.height = displayHeight;
-  
-  // Center the canvas
-  canvasElement.style.width = displayWidth + 'px';
-  canvasElement.style.height = displayHeight + 'px';
-  canvasElement.style.left = (window.innerWidth - displayWidth) / 2 + 'px';
-  canvasElement.style.top = (window.innerHeight - displayHeight) / 2 + 'px';
   
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
   
-  // Draw the results image (no stretching since canvas matches aspect ratio)
+  // Draw the results image
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
   // Handle multiple people or single person
@@ -351,13 +358,21 @@ pose.onResults((results) => {
   });
 });
 
-// Start camera and pose detection
+// Start camera and pose detection with max performance settings
+let lastFrameTime = 0;
+const TARGET_FPS = 15; // Limit to 15fps for better performance
+
 const camera = new Camera(videoElement, {
   onFrame: async () => {
+    const now = performance.now();
+    if (now - lastFrameTime < 1000 / TARGET_FPS) {
+      return; // Skip this frame
+    }
+    lastFrameTime = now;
     await pose.send({ image: videoElement });
   },
-  width: 640, // Reduced to prevent quality issues with MediaPipe
-  height: 480
+  width: 320, // Much smaller for max performance
+  height: 240
 });
 
 // Initialize everything
