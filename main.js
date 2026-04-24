@@ -24,6 +24,87 @@ const totalImages = outfitSets.reduce((count, set) => count + (set.torso ? 1 : 0
 // Tracking for smoothing
 let prevCoords = null;
 
+// Setup scale control UI
+function setupScaleControls() {
+  const slider = document.getElementById('jacket-scale-slider');
+  const scaleValue = document.getElementById('scale-value');
+  const resetButton = document.getElementById('reset-scale');
+  
+  if (!slider) return;
+  
+  // Update display when slider moves
+  slider.addEventListener('input', (e) => {
+    USER_SCALE_OVERRIDE = parseFloat(e.target.value);
+    AUTO_SCALE_ENABLED = false;
+    OUTFIT_SCALE = USER_SCALE_OVERRIDE;
+    scaleValue.textContent = USER_SCALE_OVERRIDE.toFixed(2) + 'x';
+    
+    // Show feedback
+    console.log(`Jacket scale set to: ${OUTFIT_SCALE}x`);
+    
+    // Optional: Add haptic-like visual feedback
+    slider.style.transform = 'scale(1.02)';
+    setTimeout(() => { slider.style.transform = 'scale(1)'; }, 100);
+  });
+  
+  // Reset button - go back to auto sizing
+  resetButton.addEventListener('click', () => {
+    AUTO_SCALE_ENABLED = true;
+    slider.value = '1.0';
+    USER_SCALE_OVERRIDE = 1.0;
+    scaleValue.textContent = 'Auto';
+    
+    // Flash green to confirm
+    resetButton.style.background = '#00c851';
+    setTimeout(() => { resetButton.style.background = 'rgba(255,255,255,0.2)'; }, 300);
+    
+    console.log('Reset to automatic sizing');
+  });
+  
+  // Load saved preference from localStorage
+  const savedScale = localStorage.getItem('lifejacket_scale');
+  if (savedScale) {
+    USER_SCALE_OVERRIDE = parseFloat(savedScale);
+    AUTO_SCALE_ENABLED = false;
+    OUTFIT_SCALE = USER_SCALE_OVERRIDE;
+    slider.value = USER_SCALE_OVERRIDE;
+    scaleValue.textContent = USER_SCALE_OVERRIDE.toFixed(2) + 'x';
+    console.log(`Loaded saved scale: ${OUTFIT_SCALE}x`);
+  }
+  
+  // Save scale when changed (optional)
+  slider.addEventListener('change', () => {
+    localStorage.setItem('lifejacket_scale', USER_SCALE_OVERRIDE);
+  });
+}
+
+// Auto-scaling based on shoulder width (optional intelligence)
+function calculateAutoScale(landmarks, w) {
+  if (!AUTO_SCALE_ENABLED) return OUTFIT_SCALE;
+  
+  const leftShoulder = landmarks[11];
+  const rightShoulder = landmarks[12];
+  if (!leftShoulder || !rightShoulder) return 1.0;
+  
+  const shoulderWidthPx = Math.abs((rightShoulder.x - leftShoulder.x) * w);
+  // Assume average shoulder width is ~45cm, map to scale
+  const targetWidthPx = 300; // Desired jacket width in pixels at 1m distance
+  let autoScale = shoulderWidthPx / targetWidthPx;
+  
+  // Clamp to reasonable range
+  autoScale = Math.min(2.0, Math.max(0.5, autoScale));
+  
+  // Update slider UI if in auto mode
+  const slider = document.getElementById('jacket-scale-slider');
+  const scaleValue = document.getElementById('scale-value');
+  if (slider && scaleValue && AUTO_SCALE_ENABLED) {
+    slider.value = autoScale;
+    scaleValue.textContent = 'Auto (' + autoScale.toFixed(2) + 'x)';
+  }
+  
+  return autoScale;
+}
+
 // Load all outfit images
 function loadOutfitImages() {
   outfitSets.forEach((set, setIndex) => {
