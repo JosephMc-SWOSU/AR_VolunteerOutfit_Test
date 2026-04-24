@@ -468,3 +468,4 @@ setTimeout(() => {
 }, 3000);
 
 console.log('AR Volunteer Outfit system initialized with multiple outfit sets!');
+setupScaleControls();
