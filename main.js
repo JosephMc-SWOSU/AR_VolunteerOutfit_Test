@@ -213,6 +213,36 @@ function overlayImageOnCanvas(img, landmarks, isHead = false) {
   const key = isHead ? 'head' : 'torso';
   prevCoords[key] = { x: overlayX, y: overlayY, width: overlayWidth, height: overlayHeight };
   
+  // For torso: preserve aspect ratio and rotate to match shoulders
+  if (!isHead) {
+    // Calculate angle between shoulders
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
+    if (leftShoulder && rightShoulder) {
+      const dx = rightShoulder.x - leftShoulder.x;
+      const dy = rightShoulder.y - leftShoulder.y;
+      const angle = Math.atan2(dy, dx);
+      // Preserve aspect ratio
+      const aspect = img.naturalWidth / img.naturalHeight;
+      overlayHeight = overlayWidth / aspect;
+      // Center of overlay
+      const centerX = overlayX + overlayWidth / 2;
+      const centerY = overlayY + overlayHeight / 2;
+      canvasCtx.save();
+      canvasCtx.translate(centerX, centerY);
+      canvasCtx.rotate(angle);
+      canvasCtx.drawImage(
+        img,
+        -overlayWidth / 2,
+        -overlayHeight / 2,
+        overlayWidth,
+        overlayHeight
+      );
+      canvasCtx.restore();
+      return;
+    }
+  }
+  // For head or fallback, draw normally
   canvasCtx.drawImage(img, overlayX, overlayY, overlayWidth, overlayHeight);
 }
 
@@ -262,6 +292,35 @@ function overlayImageOnCanvasMulti(img, landmarks, isHead = false, personPrevCoo
     }
     personPrevCoords[key] = { x: overlayX, y: overlayY, width: overlayWidth, height: overlayHeight };
   }
+  // For torso: preserve aspect ratio and rotate to match shoulders
+  if (!isHead) {
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
+    if (leftShoulder && rightShoulder) {
+      const dx = rightShoulder.x - leftShoulder.x;
+      const dy = rightShoulder.y - leftShoulder.y;
+      const angle = Math.atan2(dy, dx);
+      // Preserve aspect ratio
+      const aspect = img.naturalWidth / img.naturalHeight;
+      overlayHeight = overlayWidth / aspect;
+      // Center of overlay
+      const centerX = overlayX + overlayWidth / 2;
+      const centerY = overlayY + overlayHeight / 2;
+      canvasCtx.save();
+      canvasCtx.translate(centerX, centerY);
+      canvasCtx.rotate(angle);
+      canvasCtx.drawImage(
+        img,
+        -overlayWidth / 2,
+        -overlayHeight / 2,
+        overlayWidth,
+        overlayHeight
+      );
+      canvasCtx.restore();
+      return;
+    }
+  }
+  // For head or fallback, draw normally
   canvasCtx.drawImage(img, overlayX, overlayY, overlayWidth, overlayHeight);
 }
 
